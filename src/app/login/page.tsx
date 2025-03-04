@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { signIn } from 'next-auth/react';
 import { supabase } from '../../lib/supabase/client';
 
 export default function LoginPage() {
@@ -20,7 +21,7 @@ export default function LoginPage() {
       setSuccess('Registration successful! Please check your email to verify your account.');
     }
     // Check for auth errors
-    if (searchParams.get('error') === 'auth') {
+    if (searchParams.get('error')) {
       setError('Authentication failed. Please try again.');
     }
 
@@ -63,18 +64,14 @@ export default function LoginPage() {
       setLoading(true);
       setError('');
       
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
+      const result = await signIn('google', {
+        callbackUrl: '/dashboard',
+        redirect: true,
       });
 
-      if (error) throw error;
+      if (result?.error) {
+        throw new Error(result.error);
+      }
     } catch (error: any) {
       setError(error.message || 'An error occurred during Google sign in');
       setLoading(false);
