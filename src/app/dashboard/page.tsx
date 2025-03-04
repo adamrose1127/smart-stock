@@ -11,23 +11,55 @@ export default function Dashboard() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        router.push('/login');
-        return;
-      }
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+          router.push('/login');
+          return;
+        }
 
-      setUser(session.user);
-      setLoading(false);
+        if (!session) {
+          console.log('No active session found');
+          router.push('/login');
+          return;
+        }
+
+        console.log('Session found:', session.user.email);
+        setUser(session.user);
+      } catch (error) {
+        console.error('Dashboard error:', error);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
     };
 
     checkUser();
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.push('/login');
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push('/login');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   if (loading) {
@@ -36,6 +68,10 @@ export default function Dashboard() {
         <div className="text-lg">Loading...</div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null; // Will redirect in useEffect
   }
 
   return (

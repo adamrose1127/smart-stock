@@ -8,16 +8,14 @@ const handler = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  callbacks: {
-    async signIn({ user, account }) {
-      return true;
-    },
-    async redirect({ url, baseUrl }) {
-      return url.startsWith(baseUrl) ? url : baseUrl + '/dashboard';
-    },
-  },
   pages: {
     signIn: '/login',
+  },
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Always redirect to dashboard after sign in
+      return `${baseUrl}/dashboard`;
+    },
   },
 });
 

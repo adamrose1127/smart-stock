@@ -3,43 +3,33 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from 'next-auth/react';
 import { supabase } from '../../lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user just registered
-    if (searchParams.get('registered') === 'true') {
-      setSuccess('Registration successful! Please check your email to verify your account.');
-    }
-    // Check for auth errors
-    if (searchParams.get('error')) {
-      setError('Authentication failed. Please try again.');
-    }
-
     // Check if user is already logged in
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        console.log('Existing session found, redirecting to dashboard');
         router.push('/dashboard');
       }
     };
-
     checkSession();
-  }, [router, searchParams]);
+  }, [router]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent form from submitting traditionally
     setError('');
     setLoading(true);
+    console.log('Attempting login with email:', email);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -47,12 +37,20 @@ export default function LoginPage() {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase auth error:', error);
+        throw error;
+      }
 
       if (data.user) {
-        router.push('/dashboard');
+        console.log('Login successful, redirecting to dashboard');
+        await router.push('/dashboard');
+      } else {
+        console.error('No user data received');
+        setError('Login failed - no user data received');
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       setError(error.message || 'An error occurred during login');
     } finally {
       setLoading(false);
@@ -62,17 +60,27 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      setError('');
+      console.log('Initiating Google login');
       
-      const result = await signIn('google', {
-        callbackUrl: '/dashboard',
-        redirect: true,
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
       });
-
-      if (result?.error) {
-        throw new Error(result.error);
+      
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
       }
+      
+      console.log('Google OAuth initiated:', data);
     } catch (error: any) {
+      console.error('Google login error:', error);
       setError(error.message || 'An error occurred during Google sign in');
       setLoading(false);
     }
@@ -83,7 +91,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to Smart Stock
+            Welcome to Stokik
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
@@ -92,12 +100,6 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-
-        {success && (
-          <div className="rounded-md bg-green-50 p-4">
-            <div className="text-sm text-green-700">{success}</div>
-          </div>
-        )}
 
         {error && (
           <div className="rounded-md bg-red-50 p-4">
@@ -143,7 +145,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} className="mt-8 space-y-6">
+          <input type="hidden" name="remember" value="true" />
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
@@ -179,31 +182,11 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <Link href="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
-
           <div>
             <button
               type="submit"
               disabled={loading}
-              className={`btn-primary w-full ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
+              className="btn-primary w-full"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
