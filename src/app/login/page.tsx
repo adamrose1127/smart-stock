@@ -60,6 +60,10 @@ export default function LoginPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
@@ -74,7 +78,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to Stokik
+            Sign in to Smart Stock
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
@@ -87,6 +91,12 @@ export default function LoginPage() {
         {success && (
           <div className="rounded-md bg-green-50 p-4">
             <div className="text-sm text-green-700">{success}</div>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="text-sm text-red-700">{error}</div>
           </div>
         )}
 
@@ -128,12 +138,6 @@ export default function LoginPage() {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{error}</div>
-            </div>
-          )}
-
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
